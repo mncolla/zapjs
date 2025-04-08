@@ -13,7 +13,9 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
     }
   })
 
@@ -34,6 +36,30 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+ipcMain.handle('execute-code', async (_, code: string) => {
+  try {
+    const vm = require('vm');
+    const context = vm.createContext({
+      console: {
+        log: (...args: any[]) => {
+          return args.map(arg => {
+            if (typeof arg === 'object') {
+              return JSON.stringify(arg, null, 2);
+            }
+            return String(arg);
+          }).join(' ');
+        }
+      }
+    });
+    const script = new vm.Script(code);
+    const result = script.runInContext(context, { timeout: 5000 });
+    return { success: true, result: result !== undefined ? String(result) : '' };
+  } catch (err) {
+    const error = err as Error;
+    return { success: false, error: error.message || 'Error desconocido' };
+  }
+});
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
