@@ -8,11 +8,11 @@
 	let editor: monaco.editor.IStandaloneCodeEditor;
 	let model: monaco.editor.ITextModel;
     let debounceTimer: NodeJS.Timeout;
-    let output: string = '';
     let error: string = '';
     let isLoading: boolean = false;
     let editorWidth: number = 67; // Porcentaje inicial
     let isResizing: boolean = false;
+    let logs: string[] = [];
 
     function startResize(_e: MouseEvent) {
         isResizing = true;
@@ -47,14 +47,14 @@
         debounceTimer = setTimeout(async () => {
             const content = editor.getValue();
             if (!content.trim()) {
-                output = '';
                 error = '';
+                logs = [];
                 return;
             }
 
             if (!window.api?.executeCode) {
                 error = 'Error: La API de ejecución no está disponible. Por favor, reinicia la aplicación.';
-                output = '';
+                logs = [];
                 return;
             }
 
@@ -63,15 +63,15 @@
                 const result = await window.api.executeCode(content);
                 if (result.success) {
                     error = '';
-                    output = result.result || '';
+                    logs = result.logs || [];
                 } else {
                     error = result.error || 'Error desconocido';
-                    output = '';
+                    logs = [];
                 }
             } catch (err) {
                 console.error('Error al ejecutar código:', err);
                 error = 'Error al ejecutar el código';
-                output = '';
+                logs = [];
             } finally {
                 isLoading = false;
             }
@@ -97,12 +97,7 @@
             fontSize: 14,
 		});
 
-		loadCode(`// Escribe tu código aquí
-console.log('Hola mundo');
-
-// También puedes usar expresiones
-const a = 1 + 2;
-a;`, 'javascript');
+		loadCode(`console.log('Hola mundo');`, 'javascript');
         
         editor.onDidChangeModelContent(handleContentChange);
 	});
@@ -127,17 +122,22 @@ a;`, 'javascript');
         on:mousedown={startResize}
     ></div>
     <div 
-        class="relative bg-gray-800 p-4 overflow-auto" 
+        class="relative bg-gray-900 p-4 overflow-auto" 
         style="width: {100 - editorWidth}%"
     >
         <div class="text-white">
-            <h2 class="text-xl font-bold mb-4">Salida:</h2>
             {#if isLoading}
                 <div class="text-gray-400 mb-4">Ejecutando código...</div>
             {:else if error}
                 <div class="text-red-500 mb-4 font-mono">{error}</div>
             {:else}
-                <pre class="whitespace-pre-wrap font-mono">{output}</pre>
+                {#if logs.length > 0}
+                    <div class="mb-4">
+                        {#each logs as log}
+                            <pre class="whitespace-pre-wrap font-mono text-gray-300 mb-1">{log}</pre>
+                        {/each}
+                    </div>
+                {/if}
             {/if}
         </div>
     </div>

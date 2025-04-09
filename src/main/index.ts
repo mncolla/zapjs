@@ -40,21 +40,27 @@ function createWindow(): void {
 ipcMain.handle('execute-code', async (_, code: string) => {
   try {
     const vm = require('vm');
+    const logs: string[] = [];
     const context = vm.createContext({
       console: {
         log: (...args: any[]) => {
-          return args.map(arg => {
+          const logMessage = args.map(arg => {
             if (typeof arg === 'object') {
               return JSON.stringify(arg, null, 2);
             }
             return String(arg);
           }).join(' ');
+          logs.push(logMessage);
+          return logMessage;
         }
       }
     });
     const script = new vm.Script(code);
-    const result = script.runInContext(context, { timeout: 5000 });
-    return { success: true, result: result !== undefined ? String(result) : '' };
+    script.runInContext(context, { timeout: 5000 });
+    return { 
+      success: true, 
+      logs: logs
+    };
   } catch (err) {
     const error = err as Error;
     return { success: false, error: error.message || 'Error desconocido' };
