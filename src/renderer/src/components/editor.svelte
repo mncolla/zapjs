@@ -11,10 +11,35 @@
     let output: string = '';
     let error: string = '';
     let isLoading: boolean = false;
+    let editorWidth: number = 67; // Porcentaje inicial
+    let isResizing: boolean = false;
+
+    function startResize(_e: MouseEvent) {
+        isResizing = true;
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', stopResize);
+    }
+
+    function handleResize(e: MouseEvent) {
+        if (!isResizing) return;
+        
+        const containerWidth = window.innerWidth;
+        const newWidth = (e.clientX / containerWidth) * 100;
+        
+        // Limitar el ancho entre 30% y 70%
+        editorWidth = Math.min(Math.max(newWidth, 30), 70);
+    }
+
+    function stopResize() {
+        isResizing = false;
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+    }
 
     function loadCode(code: string, language: string) {
 		model = monaco.editor.createModel(code, language);
 		editor.setModel(model);
+        handleContentChange()
 	}
 
     async function handleContentChange() {
@@ -68,7 +93,7 @@
             minimap: {
                 enabled: false
             },
-            lineNumbers: 'on',
+            lineNumbers: 'off',
             fontSize: 14,
 		});
 
@@ -90,8 +115,21 @@ a;`, 'javascript');
 </script>
 
 <div class="flex h-screen w-full">
-    <div class="flex-grow" bind:this={editorElement}></div>
-    <div class="w-1/3 bg-gray-800 p-4 overflow-auto">
+    <div 
+        class="relative" 
+        style="width: {editorWidth}%"
+    >
+        <div class="h-full" bind:this={editorElement}></div>
+    </div>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div 
+        class="relative w-[2px] cursor-col-resize hover:bg-blue-500 transition-colors"
+        on:mousedown={startResize}
+    ></div>
+    <div 
+        class="relative bg-gray-800 p-4 overflow-auto" 
+        style="width: {100 - editorWidth}%"
+    >
         <div class="text-white">
             <h2 class="text-xl font-bold mb-4">Salida:</h2>
             {#if isLoading}
